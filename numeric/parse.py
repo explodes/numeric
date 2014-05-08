@@ -14,11 +14,11 @@ class NumberFormatException(ParseException): pass
 
 
 OPS = {
-    "*": tree.Mult,
-    "+": tree.Plus,
-    "-": tree.Minus,
-    "^": tree.Power,
-    "/": tree.Div,
+    "*": tree.Multiply,
+    "+": tree.Add,
+    "-": tree.Subtract,
+    "^": tree.Exponent,
+    "/": tree.Divide,
 }
 
 CONSTANTS = {
@@ -30,6 +30,9 @@ FUNCS = {
     "sin": tree.Sin,
     "cos": tree.Cos,
 }
+
+EXPRESSIONS = dict(OPS)
+EXPRESSIONS.update(FUNCS)
 
 STATE_NONE = 0
 STATE_CHAR = 1
@@ -94,7 +97,7 @@ def gen_tokens(string):
         yield current
 
 
-def parse(string):
+def polish(string):
     ops = []
 
     def get_op(key):
@@ -107,20 +110,14 @@ def parse(string):
         if not ops or ops[-1] != "(":
             raise ParenthesisException("Matching parenthesis not found")
 
-    print "TOKENS", list(gen_tokens(string))
-
-
     for token in gen_tokens(string):
-
         # function
         if token in FUNCS:
-            # print "function", "op-push1", token
             ops.append(token)
         # comma
         elif token == ",":
             # yield until left paren
             while ops and ops[-1] != "(":
-                # print "comma", "op-pop1", ops[-1]
                 yield ops.pop()
             check_left_paren()
         # operator
@@ -129,47 +126,55 @@ def parse(string):
             while ops and ops[-1] in OPS:
                 o2 = get_op(ops[-1])
                 if (o1.left_assoc and o1.precedence == o2.precedence) or (o1.precedence < o2.precedence):
-                    # print "operator", "op-pop1", ops[-1]
                     yield ops.pop()
                 else:
                     break
-            # print "operator", "op-push1", token
             ops.append(token)
         # left paren
         elif token == "(":
             # push left paren onto stack
-            # print "left-paren", "op-push1", token
             ops.append(token)
         # right paren
         elif token == ")":
             # yield until left paren
             while ops and ops[-1] != "(":
-                # print "right-paren", "op-pop1", ops[-1]
                 yield ops.pop()
             check_left_paren()
             ops.pop()
             # if its a func, yield the function token to the output (function special case)
             if ops[-1] in FUNCS:
-                # print "right-paren", "op-pop2", ops[-1]
                 yield ops.pop()
-        # numeric value
-        elif token in CONSTANTS:
-            # token is a number/constant
-            # print "constant", "yield1", token
-            yield token
-        # numeric value
+        # numeric value, constant, variable
         else:
-            # token is a number, maybe
             try:
-                # print "numeric", "yield1", token
                 yield float(token)
             except ValueError:
-                raise ParseException("Invalid token: %s" % (token))
+                yield token
     while ops:
         if ops[-1] in ("(", ")"):
             raise ParenthesisException("Mismatched Parenthesis")
-        # print "extras", "op-pop1", ops[-1]
         yield ops.pop()
+
+
+def parse(string):
+    stack = []
+    for token in polish(string):
+        if token in EXPRESSIONS:
+            klass = EXPRESSIONS[token]
+            n = klass.num_args
+            args = stack[-n:]
+            stack = stack[:-n]
+            expr = klass(token, *args)
+            stack.append(expr)
+        elif isinstance(token, float):
+            stack.append(tree.ConstantExpression(token))
+        elif token in CONSTANTS:
+            stack.append(tree.NamedConstantExpression(token, CONSTANTS[token]))
+        else:
+            stack.append(tree.VariableExpression(token))
+    if len(stack) != 1:
+        raise ParseException("Invalid formula")
+    return stack[0]
 
 
 

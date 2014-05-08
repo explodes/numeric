@@ -1,125 +1,207 @@
 import math
 
-## EXPRESSION
+
+## EXPRESSIONS
 
 class Expression(object):
-    def __init__(self, left, op, right):
-        self.left = left
-        self.op = op
-        self.right = right
+    """
+    Base Expression
+    """
+    num_args = 0
+
+    @property
+    def name(self):
+        return "null"
 
     def __str__(self):
-        return "(%s %s %s)" % (self.left, self.op.name, self.right)
+        return self.name
 
-    def run(self):
-        return self.op.run(self.left.run(), self.right.run())
+    def __repr__(self):
+        return "Expression()"
 
-
-##  VALUES
-
-class Value(object):
-    def __init__(self, name):
-        self.name = name
-
-    def __str__(self):
-        return "%s" % (self.name)
+    def run(self, **variables):
+        return ConstantExpression(float('nan'))
 
 
-class ConstantValue(object):
-    def __init__(self, name, value):
-        self.name = name
+class ConstantExpression(Expression):
+    num_args = 0
+
+    def __init__(self, value):
         self.value = value
 
-    def run(self):
-        return self.value
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.value)
+
+    @property
+    def name(self):
+        return str(self.value)
+
+    def run(self, **variables):
+        return self
 
 
-class NumericValue(ConstantValue):
-    def __init__(self, value):
-        super(NumericValue, self).__init__(value, value)
+class NamedConstantExpression(ConstantExpression):
+    num_args = 0
+
+    def __init__(self, name, value):
+        super(NamedConstantExpression, self).__init__(value)
+        self._name = name
+
+    def __repr__(self):
+        return "%s(%r, %r)" % (self.__class__.__name__, self.name, self.value)
+
+    @property
+    def name(self):
+        return self._name
+
+    def run(self, **variables):
+        return self
 
 
-## OPS
+class VariableExpression(Expression):
+    num_args = 0
 
-class Op(object):
-    #precedence = 0
-    #left_assoc = 0
-    #name = ""
-    pass
+    def __init__(self, name):
+        self._name = name
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.name)
+
+    @property
+    def name(self):
+        return self._name
+
+    def run(self, **variables):
+        if self.name in variables:
+            return ConstantExpression(variables[self.name])
+        else:
+            return self
 
 
-class Mult(Op):
-    precedence = 3
-    left_assoc = True
+## OPERATOR EXPRESSIONS
+
+class OperatorExpression(Expression):
+    num_args = 2
+
+    def __init__(self, name, left, right):
+        self.left = left
+        self.right = right
+
+    def __repr__(self):
+        return "%s(%r, %r, %r)" % (self.__class__.__name__, self.name, self.left, self.right)
+
+    def __str__(self):
+        return "%s %s %s" % (self.left, self.name, self.right)
+
+
+class Multiply(OperatorExpression):
     name = "*"
-
-    @classmethod
-    def run(cls, left, right):
-        return left.run() * right.run()
-
-
-class Div(Op):
     precedence = 3
     left_assoc = True
+
+    def run(self, **variables):
+        left_val = self.left.run(**variables)
+        right_val = self.right.run(**variables)
+        if isinstance(left_val, ConstantExpression) and isinstance(right_val, ConstantExpression):
+            return ConstantExpression(left_val.value * right_val.value)
+        else:
+            return Multiply(self.name, left_val, right_val)
+
+
+class Divide(OperatorExpression):
     name = "/"
-
-    @classmethod
-    def run(cls, left, right):
-        return left.run() / right.run()
-
-
-class Plus(Op):
-    precedence = 2
+    precedence = 3
     left_assoc = True
+
+    def run(self, **variables):
+        left_val = self.left.run(**variables)
+        right_val = self.right.run(**variables)
+        if isinstance(left_val, ConstantExpression) and isinstance(right_val, ConstantExpression):
+            return ConstantExpression(left_val.value / right_val.value)
+        else:
+            return Divide(self.name, left_val, right_val)
+
+
+class Add(OperatorExpression):
     name = "+"
-
-    @classmethod
-    def run(cls, left, right):
-        return left.run() + right.run()
-
-
-class Minus(Op):
     precedence = 2
     left_assoc = True
+
+    def run(self, **variables):
+        left_val = self.left.run(**variables)
+        right_val = self.right.run(**variables)
+        if isinstance(left_val, ConstantExpression) and isinstance(right_val, ConstantExpression):
+            return ConstantExpression(left_val.value + right_val.value)
+        else:
+            return Add(self.name, left_val, right_val)
+
+
+class Subtract(OperatorExpression):
     name = "-"
+    precedence = 2
+    left_assoc = True
 
-    @classmethod
-    def run(cls, left, right):
-        return left.run() - right.run()
+    def run(self, **variables):
+        left_val = self.left.run(**variables)
+        right_val = self.right.run(**variables)
+        if isinstance(left_val, ConstantExpression) and isinstance(right_val, ConstantExpression):
+            return ConstantExpression(left_val.value - right_val.value)
+        else:
+            return Subtract(self.name, left_val, right_val)
 
 
-class Power(Op):
+class Exponent(OperatorExpression):
+    name = "^"
     precedence = 4
     left_assoc = False
-    name = "^"
 
-    @classmethod
-    def run(cls, left, right):
-        return left.run() ** right.run()
+    def run(self, **variables):
+        left_val = self.left.run(**variables)
+        right_val = self.right.run(**variables)
+        if isinstance(left_val, ConstantExpression) and isinstance(right_val, ConstantExpression):
+            return ConstantExpression(left_val.value ** right_val.value)
+        else:
+            return Exponent(self.name, left_val, right_val)
 
 
-## FUNCS
+## FUNCTIONS
 
-class Func(object):
+
+class FunctionExpression(Expression):
     def __init__(self, name, *args):
-        self.name = name
         self.args = args
 
     def __str__(self):
         return "%s(%s)" % (self.name, ", ".join(map(str, self.args)))
 
 
-class Sin(Func):
-    def __init__(self, expr):
-        super(Cos, self).__init__("sin", expr)
+class Sin(FunctionExpression):
+    num_args = 1
+    name = "sin"
 
-    def run(self):
-        return math.sin(self.expr.run())
+    def __init__(self, name, expr):
+        super(Sin, self).__init__(name, expr)
+
+    def run(self, **variables):
+        val = self.args[0].run(**variables)
+        if isinstance(val, ConstantExpression):
+            return ConstantExpression(math.sin(val.value))
+        else:
+            return Sin(self.name, val)
 
 
-class Cos(Func):
-    def __init__(self, expr):
-        super(Cos, self).__init__("cos", expr)
+class Cos(FunctionExpression):
+    num_args = 1
+    name = "cos"
 
-    def run(self):
-        return math.cos(self.expr.run())
+    def __init__(self, name, expr):
+        super(Cos, self).__init__(name, expr)
+
+    def run(self, **variables):
+        val = self.args[0].run(**variables)
+        if isinstance(val, ConstantExpression):
+            return ConstantExpression(math.cos(val.value))
+        else:
+            return Sin(self.name, val)
+
+
