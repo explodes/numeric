@@ -17,4 +17,6 @@ a + 5 * c - d
 a + b * 3 - d
 >>> print node.run(b=5, c=3)
 a + 15 - d
+>>> print node.run(a=1, b=2, c=3, d=4)
+3
 ```
