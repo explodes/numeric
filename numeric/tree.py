@@ -22,6 +22,9 @@ class Expression(object):
     def run(self, **variables):
         return ConstantExpression(float('nan'))
 
+    def is_complete(self):
+        return False
+
 
 class ConstantExpression(Expression):
     num_args = 0
@@ -38,6 +41,9 @@ class ConstantExpression(Expression):
 
     def run(self, **variables):
         return self
+
+    def is_complete(self):
+        return isinstance(self.value, (int, float, long))
 
 
 class NamedConstantExpression(ConstantExpression):
@@ -91,7 +97,7 @@ class OperatorExpression(Expression):
         return "%s(%r, %r, %r)" % (self.__class__.__name__, self.name, self.left, self.right)
 
     def __str__(self):
-        return "%s %s %s" % (self.left, self.name, self.right)
+        return "(%s %s %s)" % (self.left, self.name, self.right)
 
 
 class Multiply(OperatorExpression):
@@ -102,7 +108,7 @@ class Multiply(OperatorExpression):
     def run(self, **variables):
         left_val = self.left.run(**variables)
         right_val = self.right.run(**variables)
-        if isinstance(left_val, ConstantExpression) and isinstance(right_val, ConstantExpression):
+        if left_val.is_complete() and right_val.is_complete():
             return ConstantExpression(left_val.value * right_val.value)
         else:
             return Multiply(self.name, left_val, right_val)
@@ -116,7 +122,7 @@ class Divide(OperatorExpression):
     def run(self, **variables):
         left_val = self.left.run(**variables)
         right_val = self.right.run(**variables)
-        if isinstance(left_val, ConstantExpression) and isinstance(right_val, ConstantExpression):
+        if left_val.is_complete() and right_val.is_complete():
             return ConstantExpression(left_val.value / right_val.value)
         else:
             return Divide(self.name, left_val, right_val)
@@ -130,7 +136,7 @@ class Add(OperatorExpression):
     def run(self, **variables):
         left_val = self.left.run(**variables)
         right_val = self.right.run(**variables)
-        if isinstance(left_val, ConstantExpression) and isinstance(right_val, ConstantExpression):
+        if left_val.is_complete() and right_val.is_complete():
             return ConstantExpression(left_val.value + right_val.value)
         else:
             return Add(self.name, left_val, right_val)
@@ -144,7 +150,7 @@ class Subtract(OperatorExpression):
     def run(self, **variables):
         left_val = self.left.run(**variables)
         right_val = self.right.run(**variables)
-        if isinstance(left_val, ConstantExpression) and isinstance(right_val, ConstantExpression):
+        if left_val.is_complete() and right_val.is_complete():
             return ConstantExpression(left_val.value - right_val.value)
         else:
             return Subtract(self.name, left_val, right_val)
@@ -158,7 +164,7 @@ class Exponent(OperatorExpression):
     def run(self, **variables):
         left_val = self.left.run(**variables)
         right_val = self.right.run(**variables)
-        if isinstance(left_val, ConstantExpression) and isinstance(right_val, ConstantExpression):
+        if left_val.is_complete() and right_val.is_complete():
             return ConstantExpression(left_val.value ** right_val.value)
         else:
             return Exponent(self.name, left_val, right_val)
@@ -174,6 +180,9 @@ class FunctionExpression(Expression):
     def __str__(self):
         return "%s(%s)" % (self.name, ", ".join(map(str, self.args)))
 
+    def __repr__(self):
+        return "%s(%r, *%r)" % (self.__class__.__name__, self.name, self.args)
+
 
 class Sin(FunctionExpression):
     num_args = 1
@@ -184,7 +193,7 @@ class Sin(FunctionExpression):
 
     def run(self, **variables):
         val = self.args[0].run(**variables)
-        if isinstance(val, ConstantExpression):
+        if val.is_complete():
             return ConstantExpression(math.sin(val.value))
         else:
             return Sin(self.name, val)
@@ -199,7 +208,7 @@ class Cos(FunctionExpression):
 
     def run(self, **variables):
         val = self.args[0].run(**variables)
-        if isinstance(val, ConstantExpression):
+        if val.is_complete():
             return ConstantExpression(math.cos(val.value))
         else:
             return Sin(self.name, val)
