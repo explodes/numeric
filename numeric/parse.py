@@ -62,9 +62,10 @@ def gen_tokens(string):
         elif char in '0123456789.':
             if state == STATE_CHAR:
                 # automatic multiply
-                yield current
-                if current not in OPS:
-                    yield "*"
+                if current:
+                    yield current
+                    if current not in OPS:
+                        yield "*"
                 current = ""
                 # end mode
                 state == STATE_NONE
@@ -78,11 +79,19 @@ def gen_tokens(string):
                 has_decimal = True
             # Append char to current number
             current += char
+        # have char
+        elif char in OPS:
+            if current:
+                yield current
+                current = ""
+            yield char
+            state = STATE_NONE
+        # var name or function name
         else:
-            # have char
             if state == STATE_NUM:
                 # automatic multiply
-                yield current
+                if current:
+                   yield current
                 if char not in OPS:
                     yield "*"
                 current = ""
@@ -158,12 +167,14 @@ def polish(string):
 
 def parse(string):
     stack = []
+    print list(polish(string))
     for token in polish(string):
         if token in EXPRESSIONS:
             klass = EXPRESSIONS[token]
             n = klass.num_args
             args = stack[-n:]
             stack = stack[:-n]
+            print klass, token, args
             expr = klass(token, *args)
             stack.append(expr)
         elif isinstance(token, float):
