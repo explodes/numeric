@@ -167,14 +167,12 @@ def polish(string):
 
 def parse(string):
     stack = []
-    print list(polish(string))
     for token in polish(string):
         if token in EXPRESSIONS:
             klass = EXPRESSIONS[token]
             n = klass.num_args
             args = stack[-n:]
             stack = stack[:-n]
-            print klass, token, args
             expr = klass(token, *args)
             stack.append(expr)
         elif isinstance(token, float):
