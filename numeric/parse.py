@@ -59,41 +59,40 @@ def gen_tokens(string):
                 current = ""
             yield char
             state = STATE_NONE
-        elif char in '0123456789.':
-            if state == STATE_CHAR:
-                # automatic multiply
-                if current:
-                    yield current
-                    if current not in OPS:
-                        yield "*"
-                current = ""
-                # end mode
-                state == STATE_NONE
-            if state == STATE_NONE:
-                # enter num mode
-                state = STATE_NUM
-                has_decimal = False
-            if char == '.':
-                if has_decimal:
-                    raise NumberFormatException("Too many decimals")
-                has_decimal = True
-            # Append char to current number
-            current += char
-        # have char
         elif char in OPS:
             if current:
                 yield current
                 current = ""
             yield char
             state = STATE_NONE
+        elif char in '0123456789.':
+            if state == STATE_CHAR:
+                # automatic multiply
+                if current:
+                    yield current
+                yield '*'
+                current = ''
+                # end mode
+                state = STATE_NUM
+            else:
+                if state == STATE_NONE:
+                    # enter num mode
+                    state = STATE_NUM
+                    has_decimal = False
+                if char == '.':
+                    if has_decimal:
+                        raise NumberFormatException("Too many decimals")
+                    has_decimal = True
+            # Append char to current number
+            current += char
+        # have char
         # var name or function name
         else:
             if state == STATE_NUM:
                 # automatic multiply
                 if current:
-                   yield current
-                if char not in OPS:
-                    yield "*"
+                    yield current
+                yield "*"
                 current = ""
                 # end mode
                 state = STATE_NONE

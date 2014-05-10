@@ -1,6 +1,8 @@
 import math
 
 
+class InvalidFunctionCall(Exception): pass
+
 ## EXPRESSIONS
 
 class Expression(object):
@@ -16,9 +18,6 @@ class Expression(object):
     def __str__(self):
         return self.name
 
-    def __repr__(self):
-        return "Expression()"
-
     def run(self, **variables):
         return ConstantExpression(float('nan'))
 
@@ -31,9 +30,6 @@ class ConstantExpression(Expression):
 
     def __init__(self, value):
         self.value = value
-
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.value)
 
     @property
     def name(self):
@@ -53,9 +49,6 @@ class NamedConstantExpression(ConstantExpression):
         super(NamedConstantExpression, self).__init__(value)
         self._name = name
 
-    def __repr__(self):
-        return "%s(%r, %r)" % (self.__class__.__name__, self.name, self.value)
-
     @property
     def name(self):
         return self._name
@@ -70,14 +63,12 @@ class VariableExpression(Expression):
     def __init__(self, name):
         self._name = name
 
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.name)
-
     @property
     def name(self):
         return self._name
 
     def run(self, **variables):
+        print variables
         if self.name in variables:
             return ConstantExpression(variables[self.name])
         else:
@@ -92,9 +83,6 @@ class OperatorExpression(Expression):
     def __init__(self, name, left, right):
         self.left = left
         self.right = right
-
-    def __repr__(self):
-        return "%s(%r, %r, %r)" % (self.__class__.__name__, self.name, self.left, self.right)
 
     def __str__(self):
         return "(%s %s %s)" % (self.left, self.name, self.right)
@@ -175,13 +163,15 @@ class Exponent(OperatorExpression):
 
 class FunctionExpression(Expression):
     def __init__(self, name, *args):
+        if len(args) != self.num_args:
+            raise InvalidFunctionCall("Wrong number of arguments")
         self.args = args
 
     def __str__(self):
         return "%s(%s)" % (self.name, ", ".join(map(str, self.args)))
 
-    def __repr__(self):
-        return "%s(%r, *%r)" % (self.__class__.__name__, self.name, self.args)
+    def exec_args(self, **variables):
+        return [arg.run(**variables) for arg in self.args]
 
 
 class Sin(FunctionExpression):
@@ -192,11 +182,11 @@ class Sin(FunctionExpression):
         super(Sin, self).__init__(name, expr)
 
     def run(self, **variables):
-        val = self.args[0].run(**variables)
+        val, = self.exec_args(**variables)
         if val.is_complete():
             return ConstantExpression(math.sin(val.value))
         else:
-            return Sin(self.name, val)
+            return Sin(self.name, val.run(**variables))
 
 
 class Cos(FunctionExpression):
@@ -207,10 +197,10 @@ class Cos(FunctionExpression):
         super(Cos, self).__init__(name, expr)
 
     def run(self, **variables):
-        val = self.args[0].run(**variables)
+        val, = self.exec_args(**variables)
         if val.is_complete():
             return ConstantExpression(math.cos(val.value))
         else:
-            return Sin(self.name, val)
+            return Cos(self.name, val.run(**variables))
 
 
