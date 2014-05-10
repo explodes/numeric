@@ -17,11 +17,14 @@ class TestParse(TestCase):
         self.assertListEqual(list_tokens('4.0'), ['4.0'])
         self.assertListEqual(list_tokens('44.0'), ['44.0'])
         self.assertListEqual(list_tokens('444.0'), ['444.0'])
+        self.assertListEqual(list_tokens('.1'), ['.1'])
+        self.assertListEqual(list_tokens('.12'), ['.12'])
         # too many decimals
-        self.assertRaises(NumberFormatException, gen_tokens, '4.4.')
-        self.assertRaises(NumberFormatException, gen_tokens, '4.44.')
-        self.assertRaises(NumberFormatException, gen_tokens, '4.44.3')
-        self.assertRaises(NumberFormatException, gen_tokens, '44.44.3')
+        self.assertRaises(NumberFormatException, list_tokens, '4.4.')
+        self.assertRaises(NumberFormatException, list_tokens, '4.44.')
+        self.assertRaises(NumberFormatException, list_tokens, '4.44.3')
+        self.assertRaises(NumberFormatException, list_tokens, '44.44.3')
+        self.assertRaises(NumberFormatException, list_tokens, '..')
         # multi value
         self.assertListEqual(list_tokens('4+4'), ['4', '+', '4'])
         self.assertListEqual(list_tokens('4 +4'), ['4', '+', '4'])

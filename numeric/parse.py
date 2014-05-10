@@ -72,8 +72,9 @@ def gen_tokens(string):
                     yield current
                 yield '*'
                 current = ''
-                # end mode
+                # enter num mode
                 state = STATE_NUM
+                has_decimal = False
             else:
                 if state == STATE_NONE:
                     # enter num mode
